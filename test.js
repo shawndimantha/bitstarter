@@ -39,14 +39,14 @@ var assertFileExists = function(infile) {
     return instr;
 };
 
-var assertFileExistsAsync = function(infile) {
-    var instr = infile.toString();
+//var assertFileExistsAsync = function(infile) {
+//    var instr = infile.toString();
 //    if(!fs.exists(instr)) {
 //       console.log("%s does not exist. Exiting.", instr);
 //       process.exit(1); // http://nodejs.org/api/process.html#process_process_exit_code
 //    }
-    return instr;
-};
+//    return instr;
+//};
 
 
 var cheerioHtmlFile = function(htmlfile) {
@@ -59,31 +59,10 @@ var loadChecks = function(checksfile) {
 };
 
 
-var cheerioURL = function( url ) {    //var retVal = rest.get( url );    
-var retVal = rest.get( url ).on( 'complete', <what here> );    console.log( '*** retVal: ' + retVal.toString() );    
-//return cheerio.load( rest.get( url ) );    
-return cheerio.load( retVal );};
 
-/*
-var loadurlfile = function(urlfile) {
-    rest.get(urlfile).on('complete', function(result) {
-        if (result instanceof Error) {
-            sys.puts('Error: ' + result.message);
-            this.retry(5000);
-        } else {
-            sys.puts(result);
-        }
-});
-
- return cheerio.load(fs.readFileSync(urlfile));
-};
-*/
-
-
-
-var checkHtmlFile = function(urlfile, checksfile) {
-//    $ = cheerioHtmlFile(htmlfile);
-    $ = loadurlfile(urlfile);
+var checkHtmlFile = function(htmlfile, checksfile) {
+    $ = cheerioHtmlFile(htmlfile);
+//   $ = loadurlfile(urlfile);
     var checks = loadChecks(checksfile).sort();
     var out = {};
     for(var ii in checks) {
@@ -92,6 +71,7 @@ var checkHtmlFile = function(urlfile, checksfile) {
     }
     return out;
 };
+
 
 var clone = function(fn) {
     // Workaround for commander.js issue.
@@ -105,17 +85,33 @@ if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
-        .option('-u, --url <url_file>', 'Path to url', clone(assertFileExistsAsync), URLFILE_DEFAULT)
+        .option('-u, --url <url_file>', 'Path to url')
         .parse(process.argv);
     
     if (program.url != null) {
-	var checkJson = checkHtmlFile(program.url, program.checks);
-	};
+        rest.get(program.url).on('complete', function(result) {
+            if (result instanceof Error) {
+		sys.puts('Error: ' + result.message);
+		this.retry(5000);
+            } 
+	    else {
+		fs.writeFileSync('outfile.html',result);
+		var checkJson = checkHtmlFile('outfile.html', program.checks);
+		var outJson = JSON.stringify(checkJson, null, 4);
+                console.log(outJson);               
+            }
+
+        });
+
+    }
+
     else {
-	var checkJson = checkHtmlFile(program.html, program.checks);
-	};
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+	var checkJson = checkHtmlFile(program.file, program.checks);
+        var outJson = JSON.stringify(checkJson, null, 4);
+        console.log(outJson);
+    }
+    
+
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
